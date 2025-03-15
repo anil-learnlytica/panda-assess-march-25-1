@@ -27,8 +27,8 @@ jobs:
             pytest --tb=short | tee report.txt
             
             # Extract number of collected tests safely
-            total_tests=$(grep -oE 'collected [0-9]+' report.txt | awk '{print $2}')
-            passed_tests=$(grep -c 'PASSED' report.txt)
+            total_tests=$(grep -oP '(?<=collected )\d+' report.txt || echo "0")
+            passed_tests=$(grep -oP '(?<=\s)PASSED(?=\s)' report.txt | wc -l)
 
             # Ensure values are numeric; default to 0 if empty
             total_tests=${total_tests:-0}
@@ -42,7 +42,7 @@ jobs:
             if [ "$total_tests" -eq 0 ]; then
                 marks=0
             else
-                marks=$(echo "scale=2; ($passed_tests * 100) / $total_tests" | bc)
+                marks=$(awk "BEGIN {printf \"%.2f\", ($passed_tests * 100) / $total_tests}")
             fi
 
             echo "Total Tests: $total_tests" >> report.txt
@@ -50,7 +50,7 @@ jobs:
             echo "Marks: $marks%" >> report.txt
 
             echo "marks=$marks" >> $GITHUB_ENV  # Store marks as environment variable
-  
+
 
       - name: Commit Test Results
         run: |
