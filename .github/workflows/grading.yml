@@ -21,27 +21,33 @@ jobs:
       - name: Run Tests
         id: run_tests
         run: |
-          pytest --tb=short | tee report.txt
-          
-          # Extract number of collected tests
-          total_tests=$(grep -oE 'collected [0-9]+' report.txt | awk '{print $2}' || echo 0)
-          passed_tests=$(grep -c 'PASSED' report.txt || echo 0)
+            pytest --tb=short | tee report.txt
+            
+            # Extract number of collected tests safely
+            total_tests=$(grep -oE 'collected [0-9]+' report.txt | awk '{print $2}')
+            passed_tests=$(grep -c 'PASSED' report.txt)
 
-          # Ensure total_tests is not empty
-          total_tests=${total_tests:-0}
-          passed_tests=${passed_tests:-0}
+            # Ensure values are numeric; default to 0 if empty
+            total_tests=${total_tests:-0}
+            passed_tests=${passed_tests:-0}
 
-          if [ "$total_tests" -eq 0 ]; then
-            marks=0
-          else
-            marks=$((passed_tests * 100 / total_tests))
-          fi
+            # Debugging output to confirm extracted values
+            echo "Extracted total_tests=$total_tests"
+            echo "Extracted passed_tests=$passed_tests"
 
-          echo "Total Tests: $total_tests" >> report.txt
-          echo "Passed Tests: $passed_tests" >> report.txt
-          echo "Marks: $marks%" >> report.txt
+            # Calculate marks safely
+            if [ "$total_tests" -eq 0 ]; then
+                marks=0
+            else
+                marks=$(echo "scale=2; ($passed_tests * 100) / $total_tests" | bc)
+            fi
 
-          echo "marks=$marks" >> $GITHUB_ENV  # Updated to use environment variables
+            echo "Total Tests: $total_tests" >> report.txt
+            echo "Passed Tests: $passed_tests" >> report.txt
+            echo "Marks: $marks%" >> report.txt
+
+            echo "marks=$marks" >> $GITHUB_ENV  # Updated to use environment variables
+  
 
       - name: Commit Test Results
         env:
