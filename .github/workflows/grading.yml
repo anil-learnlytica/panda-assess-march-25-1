@@ -1,0 +1,37 @@
+name: Auto Grading
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install pandas pytest
+
+      - name: Run Tests
+        id: run_tests
+        run: |
+          pytest --tb=short > report.txt
+          total_tests=$(grep -oP 'collected \K[0-9]+' report.txt)
+          passed_tests=$(grep -c 'PASSED' report.txt || echo 0)
+          marks=$((passed_tests * 100 / total_tests))
+          echo "Total Tests: $total_tests" >> report.txt
+          echo "Passed Tests: $passed_tests" >> report.txt
+          echo "Marks: $marks%" >> report.txt
+          echo "::set-output name=marks::$marks"
+
+      - name: Commit Test Results
+        run: |
+          git add report.txt
+          git commit -m "Updated test results"
+          git push origin main
