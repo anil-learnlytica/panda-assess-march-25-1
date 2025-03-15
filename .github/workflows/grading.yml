@@ -5,9 +5,12 @@ on: [push]
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for pushing changes back to the repo
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Updated to latest version
 
       - name: Set up Python
         uses: actions/setup-python@v3
@@ -46,18 +49,18 @@ jobs:
             echo "Passed Tests: $passed_tests" >> report.txt
             echo "Marks: $marks%" >> report.txt
 
-            echo "marks=$marks" >> $GITHUB_ENV  # Updated to use environment variables
+            echo "marks=$marks" >> $GITHUB_ENV  # Store marks as environment variable
   
 
       - name: Commit Test Results
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
 
           git add report.txt
           git commit -m "Updated test results" || echo "No changes to commit"
 
-          git remote set-url origin https://x-access-token:$GH_PAT@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
