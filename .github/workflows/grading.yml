@@ -22,8 +22,14 @@ jobs:
         id: run_tests
         run: |
           pytest --tb=short | tee report.txt
-          total_tests=$(grep -oP 'collected \K[0-9]+' report.txt || echo 0)
+          
+          # Extract number of collected tests
+          total_tests=$(grep -oE 'collected [0-9]+' report.txt | awk '{print $2}' || echo 0)
           passed_tests=$(grep -c 'PASSED' report.txt || echo 0)
+
+          # Ensure total_tests is not empty
+          total_tests=${total_tests:-0}
+          passed_tests=${passed_tests:-0}
 
           if [ "$total_tests" -eq 0 ]; then
             marks=0
@@ -38,9 +44,14 @@ jobs:
           echo "marks=$marks" >> $GITHUB_ENV  # Updated to use environment variables
 
       - name: Commit Test Results
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
+
           git add report.txt
           git commit -m "Updated test results" || echo "No changes to commit"
+
+          git remote set-url origin https://x-access-token:$GH_PAT@github.com/${{ github.repository }}.git
           git push origin main
