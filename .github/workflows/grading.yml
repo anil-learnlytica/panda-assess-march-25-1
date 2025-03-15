@@ -21,17 +21,26 @@ jobs:
       - name: Run Tests
         id: run_tests
         run: |
-          pytest --tb=short > report.txt
-          total_tests=$(grep -oP 'collected \K[0-9]+' report.txt)
+          pytest --tb=short | tee report.txt
+          total_tests=$(grep -oP 'collected \K[0-9]+' report.txt || echo 0)
           passed_tests=$(grep -c 'PASSED' report.txt || echo 0)
-          marks=$((passed_tests * 100 / total_tests))
+
+          if [ "$total_tests" -eq 0 ]; then
+            marks=0
+          else
+            marks=$((passed_tests * 100 / total_tests))
+          fi
+
           echo "Total Tests: $total_tests" >> report.txt
           echo "Passed Tests: $passed_tests" >> report.txt
           echo "Marks: $marks%" >> report.txt
-          echo "::set-output name=marks::$marks"
+
+          echo "marks=$marks" >> $GITHUB_ENV  # Updated to use environment variables
 
       - name: Commit Test Results
         run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
           git add report.txt
-          git commit -m "Updated test results"
+          git commit -m "Updated test results" || echo "No changes to commit"
           git push origin main
